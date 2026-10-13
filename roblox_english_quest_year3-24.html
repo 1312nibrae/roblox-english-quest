@@ -47,31 +47,23 @@ footer{text-align:center;padding:0 12px 14px;color:#cbd5e1;font-size:12px}
 <script>
 (()=>{
 const $=id=>document.getElementById(id), screens=['welcome','hub','quiz','speak','bank','result'];
+const RESULTS_URL = 'https://script.google.com/macros/s/AKfycbzp1RBcumywDLJc73sBYWEjHLYrrdDf96Sv-B3s1um2jYePJHWIoFXyzLgtBVDgIIrj/exec';
 let name='Player',avatar='🧑🏻‍🎤',stars=0,soundOn=true,done={vocab:false,grammar:false,speak:false},key='',idx=0,answered=false;
+let answerLog=[],resultsSent=false;
 const qs={
 vocab:[
 {pic:'🕶️',q:'What do you wear to protect your eyes on a sunny day?',o:['Sunglasses','Sandcastle','Towel','Camera'],a:0,e:'Sunglasses protect our eyes from bright sunlight.'},
 {pic:'🏰',q:'What can you build with sand?',o:['A camera','A sandcastle','A suitcase','A boat'],a:1,e:'A sandcastle is made with sand.'},
 {pic:'📸',q:'Complete the phrase: “I took ____.”',o:['a sunny','pictures','a beach','a hot'],a:1,e:'We say “I took pictures”.'},
 {pic:'⛵',q:'Which word means travelling in a boat with sails?',o:['Sailed','Bought','Played','Slept'],a:0,e:'Sailed means travelled in a sailboat.'},
-{pic:'☀️',q:'Which word describes this weather?',o:['Hungry','Sunny','Carefully','Yesterday'],a:1,e:'Sunny describes bright weather.'},
-{pic:'🧴',q:'What can help protect your skin from the sun?',o:['Sunscreen','Sandcastle','Seashell','Sunglasses'],a:0,e:'Sunscreen helps protect our skin from the sun.'},
-{pic:'🩴',q:'What can you wear on your feet at the beach?',o:['Slippers','Gloves','Scarf','Helmet'],a:0,e:'Slippers are easy to wear at the beach.'},
-{pic:'🐚',q:'What might you find on the sand near the sea?',o:['A seashell','A snowman','A school desk','A traffic light'],a:0,e:'You might find seashells on the beach.'},
-{pic:'🏄',q:'Which activity can you do on the waves?',o:['Surf','Read a menu','Drive a bus','Climb a tree'],a:0,e:'You can surf on waves.'},
-{pic:'🧳',q:'What do you pack before going on holiday?',o:['A suitcase','A whiteboard','A school bell','A traffic cone'],a:0,e:'A suitcase holds the things you pack for a trip.'}
+{pic:'☀️',q:'Which word describes this weather?',o:['Hungry','Sunny','Carefully','Yesterday'],a:1,e:'Sunny describes bright weather.'}
 ],
 grammar:[
 {pic:'🏖️',q:'Yesterday, I ____ to the beach.',o:['go','went','going','goes'],a:1,e:'The past tense of go is went.'},
 {pic:'🏊',q:'Last Sunday, we ____ in the sea.',o:['swim','swims','swam','swimming'],a:2,e:'The past tense of swim is swam.'},
 {pic:'✍️',q:'Choose the correct sentence.',o:['we took pictures.','We took pictures','We took pictures.','we took pictures'],a:2,e:'Use a capital letter and a full stop.'},
 {pic:'🌞',q:'It was hot, ____ we played in the shade.',o:['but','yesterday','swam','sunny'],a:0,e:'But joins two contrasting ideas.'},
-{pic:'🛍️',q:'I went to the market ____ I bought a hat.',o:['and','hot','was','sunny'],a:0,e:'And joins two related ideas.'},
-{pic:'🍦',q:'Yesterday, she ____ an ice cream.',o:['buy','buys','bought','buying'],a:2,e:'The past tense of buy is bought.'},
-{pic:'⚽',q:'Last weekend, they ____ football at the park.',o:['play','played','plays','playing'],a:1,e:'For this regular verb, add -ed: play → played.'},
-{pic:'📝',q:'Choose the sentence with correct punctuation.',o:['we had fun!','We had fun.','we had fun','We had fun'],a:1,e:'Start with a capital letter and finish with a full stop.'},
-{pic:'🌧️',q:'It was raining, ____ we stayed inside.',o:['so','sunny','swam','yesterday'],a:0,e:'So can show the result of something.'},
-{pic:'🧒',q:'Complete the sentence: “My friends ____ happy yesterday.”',o:['was','were','is','be'],a:1,e:'Use “were” with “my friends” in the past.'}
+{pic:'🛍️',q:'I went to the market ____ I bought a hat.',o:['and','hot','was','sunny'],a:0,e:'And joins two related ideas.'}
 ]};
 function screen(id){screens.forEach(s=>$(s).classList.toggle('hidden',s!==id));window.scrollTo({top:0,behavior:'smooth'})}
 function stats(){$('stars').textContent=stars;$('done').textContent=Object.values(done).filter(Boolean).length+'/3';Object.keys(done).forEach(k=>$(k+'-status').textContent=done[k]?'✅ Complete!':'⭐ Start')}
@@ -81,10 +73,11 @@ function oof(){if(!soundOn)return;try{let c=new(window.AudioContext||window.webk
 function confetti(){for(let i=0;i<25;i++){let x=document.createElement('span');x.className='conf';x.textContent=['⭐','✨','🏆','🟨'][Math.random()*4|0];x.style.left=Math.random()*100+'vw';x.style.animationDelay=Math.random()*.5+'s';document.body.appendChild(x);setTimeout(()=>x.remove(),3000)}}
 function begin(k){key=k;if(k==='speak'){screen('speak');return}idx=0;render();screen('quiz')}
 function render(){answered=false;let q=qs[key][idx];$('mission-label').textContent=key==='vocab'?'MISSION 1 • WORD POWER':'MISSION 2 • GRAMMAR OBBY';$('counter').textContent=`Question ${idx+1}/${qs[key].length}`;$('fill').style.width=idx/qs[key].length*100+'%';$('pic').textContent=q.pic;$('question').textContent=q.q;$('chips').innerHTML=key==='vocab'?'<span class="chip">Look at the picture</span><span class="chip">Choose one answer</span>':'<span class="chip">Think carefully</span><span class="chip">Check your grammar</span>';$('feedback').textContent='';$('feedback').className='feedback';$('next').classList.add('hidden');$('options').innerHTML='';q.o.forEach((t,i)=>{let b=document.createElement('button');b.className='option';b.textContent=t;b.onclick=()=>choose(i,b);$('options').appendChild(b)})}
-function choose(i,b){if(answered)return;answered=true;let q=qs[key][idx],opts=[...$('options').children];opts.forEach(x=>x.disabled=true);if(i===q.a){b.classList.add('correct');stars++;$('feedback').textContent='✅ Correct! '+q.e;$('feedback').className='feedback good';tone(820)}else{b.classList.add('wrong');opts[q.a].classList.add('correct');$('feedback').textContent='❌ OOF! '+q.e;$('feedback').className='feedback bad';oof()}stats();$('fill').style.width=(idx+1)/qs[key].length*100+'%';$('next').textContent=idx===qs[key].length-1?'FINISH MISSION 🏁':'NEXT ➜';$('next').classList.remove('hidden')}
+function choose(i,b){if(answered)return;answered=true;let q=qs[key][idx],opts=[...$('options').children];opts.forEach(x=>x.disabled=true);let isCorrect=i===q.a;answerLog.push({mission:key,question:q.q,chosenAnswer:q.o[i],correctAnswer:q.o[q.a],isCorrect:isCorrect?'Correct':'Incorrect'});if(isCorrect){b.classList.add('correct');stars++;$('feedback').textContent='✅ Correct! '+q.e;$('feedback').className='feedback good';tone(820)}else{b.classList.add('wrong');opts[q.a].classList.add('correct');$('feedback').textContent='❌ OOF! '+q.e;$('feedback').className='feedback bad';oof()}stats();$('fill').style.width=(idx+1)/qs[key].length*100+'%';$('next').textContent=idx===qs[key].length-1?'FINISH MISSION 🏁':'NEXT ➜';$('next').classList.remove('hidden')}
 function next(){if(idx<qs[key].length-1){idx++;render()}else{done[key]=true;stats();confetti();tone(900);toast('Mission complete! Badge unlocked! 🏆');screen('hub');if(Object.values(done).every(Boolean))setTimeout(results,500)}}
-function results(){screen('result');$('result-title').textContent=stars>=12?'YOU ARE A CHAMPION!':'QUEST COMPLETE!';$('result-msg').textContent='Well done, '+name+'! Keep practising your English.';$('result-score').textContent='You collected '+stars+' stars and completed '+Object.values(done).filter(Boolean).length+' out of 3 missions.';confetti()}
-function reset(){stars=0;done={vocab:false,grammar:false,speak:false};$('answer').value='';stats();screen('hub');toast('Game restarted. Let’s play!')}
+function sendResults(){if(resultsSent)return;resultsSent=true;const correct=answerLog.filter(a=>a.isCorrect==='Correct').length;const incorrect=answerLog.filter(a=>a.isCorrect==='Incorrect').length;const payload={studentName:name,correct:correct,incorrect:incorrect,score:(correct+incorrect?Math.round(correct/(correct+incorrect)*100):0)+'%',status:'Completed',answers:answerLog};fetch(RESULTS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)}).catch(err=>console.error('Could not send results',err));}
+function results(){sendResults();screen('result');$('result-title').textContent=stars>=12?'YOU ARE A CHAMPION!':'QUEST COMPLETE!';$('result-msg').textContent='Well done, '+name+'! Keep practising your English.';$('result-score').textContent='You got '+answerLog.filter(a=>a.isCorrect==='Correct').length+' correct and '+answerLog.filter(a=>a.isCorrect==='Incorrect').length+' incorrect answers. You collected '+stars+' stars and completed '+Object.values(done).filter(Boolean).length+' out of 3 missions.';confetti()}
+function reset(){stars=0;done={vocab:false,grammar:false,speak:false};answerLog=[];resultsSent=false;$('answer').value='';stats();screen('hub');toast('Game restarted. Let’s play!')}
 document.querySelectorAll('.avatar-choice').forEach(b=>b.onclick=()=>{document.querySelectorAll('.avatar-choice').forEach(x=>x.classList.remove('selected'));b.classList.add('selected');avatar=b.dataset.avatar;tone(500)});
 $('start').onclick=()=>{name=$('name').value.trim()||'Player';$('hello').textContent='Welcome, '+name+'!';$('player-avatar').textContent=avatar;screen('hub');tone(750)};
 document.querySelectorAll('[data-mission]').forEach(b=>b.onclick=()=>begin(b.dataset.mission));
