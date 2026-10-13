@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roblox English Quest</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;color:white;background:#111827}
+header{background:#16a34a;text-align:center;padding:22px 12px;border-bottom:6px solid #15803d}
+h1{margin:0;font-size:clamp(27px,6vw,42px);text-shadow:3px 3px #166534}
+header p{margin:10px 0 0}
+.wrap{max-width:720px;margin:auto;padding:18px}
+.stats{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pill{background:#374151;border:2px solid #4b5563;border-radius:12px;padding:10px;font-weight:bold}
+.card{background:#1f2937;border:2px solid #374151;border-radius:18px;padding:22px;margin-top:18px;box-shadow:0 7px 0 #080d16}
+h2{margin-top:0;color:#86efac}
+button{font-size:17px;font-weight:bold;border:0;border-radius:12px;padding:13px 16px;cursor:pointer}
+button:active{transform:translateY(2px)}
+.primary{background:#22c55e;color:#052e16;width:100%;margin-top:12px}
+.choice{display:block;width:100%;text-align:left;background:#374151;color:white;margin:10px 0;border:2px solid #4b5563}
+.choice:hover{background:#4b5563}
+.choice:disabled{cursor:default}
+.correct{background:#166534!important;border-color:#4ade80!important}
+.wrong{background:#991b1b!important;border-color:#f87171!important}
+.small{font-size:14px;color:#d1d5db}
+#feedback{font-weight:bold;min-height:28px;margin-top:12px}
+.hidden{display:none}
+.progress{height:12px;background:#374151;border-radius:10px;overflow:hidden;margin-top:14px}
+#bar{height:100%;width:0;background:#4ade80;transition:width .3s}
+.big{font-size:58px;text-align:center;margin:8px}
+footer{text-align:center;color:#9ca3af;padding:20px;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎮 ROBLOX ENGLISH QUEST</h1>
+  <p>⭐ Learn English. Complete quests. Become a champion! ⭐</p>
+</header>
+<main class="wrap">
+  <div class="stats">
+    <div class="pill">⭐ Stars: <span id="stars">0</span></div>
+    <div class="pill">🎯 Question: <span id="number">0/20</span></div>
+    <div class="pill">🏆 <span id="rank">Beginner</span></div>
+  </div>
+  <div class="progress"><div id="bar"></div></div>
+
+  <section class="card" id="home">
+    <div class="big">🧱🎮🧑‍🚀</div>
+    <h2>Welcome, Player!</h2>
+    <p>Ready for your English adventure?</p>
+    <p>🟩 Quest 1: Vocabulary (10 questions)</p>
+    <p>🟦 Quest 2: Grammar (10 questions)</p>
+    <p>🟨 Bonus: Speaking challenge</p>
+    <button class="primary" onclick="startGame()">▶️ START GAME</button>
+  </section>
+
+  <section class="card hidden" id="quiz">
+    <p class="small" id="category">QUEST 1</p>
+    <h2 id="question"></h2>
+    <div id="choices"></div>
+    <div id="feedback" aria-live="polite"></div>
+    <button class="primary hidden" id="next" onclick="nextQuestion()">NEXT ➜</button>
+  </section>
+
+  <section class="card hidden" id="speaking">
+    <div class="big">🎤</div>
+    <h2>Bonus Speaking Quest!</h2>
+    <p>Speak in English. Try to answer in a complete sentence.</p>
+    <h2 id="prompt"></h2>
+    <button class="primary" onclick="newPrompt()">🎲 New speaking challenge</button>
+    <button class="primary" onclick="finishGame()">🏆 Finish game</button>
+  </section>
+
+  <section class="card hidden" id="end">
+    <div class="big">🏆🎉⭐</div>
+    <h2>Quest Completed!</h2>
+    <p id="result"></p>
+    <p id="message"></p>
+    <button class="primary" onclick="startGame()">🔄 Play Again</button>
+  </section>
+</main>
+<footer>Roblox English Quest • Year 3 English Learning</footer>
+
+<script>
+const vocab = [
+["Which animal says 'meow'?","A cat","A dog","A cow",0],
+["What do we use to write?","A spoon","A pencil","A shoe",1],
+["Which one is a fruit?","A chair","A ruler","An apple",2],
+["What do we wear on our feet?","Shoes","Gloves","A hat",0],
+["Where do fish live?","In trees","In water","In a cupboard",1],
+["Which word means the opposite of hot?","Warm","Sunny","Cold",2],
+["What do we use when it rains?","An umbrella","A plate","A pillow",0],
+["Which animal can fly?","A goat","A bird","A rabbit",1],
+["What do we eat with soup?","A sock","A pencil","A spoon",2],
+["Where do pupils learn?","At school","At the beach","At the zoo",0]
+];
+const grammar = [
+["She ___ my friend.","am","is","are",1],
+["They ___ playing football.","is","am","are",2],
+["I ___ a blue bag.","has got","have got","is got",1],
+["He ___ two pencils.","have got","are got","has got",2],
+["There ___ a book on the table.","is","are","am",0],
+["There ___ three apples.","is","are","am",1],
+["One box, two ___.","boxs","boxes","boxies",1],
+["My brother ___ happy.","are","am","is",2],
+["We ___ English every day.","learn","learns","learning",0],
+["The cats ___ sleeping.","is","are","am",1]
+];
+let questions=[], index=0, stars=0, locked=false;
+const $=id=>document.getElementById(id);
+
+function show(id){
+["home","quiz","speaking","end"].forEach(x=>$(x).classList.toggle("hidden",x!==id));
+}
+function startGame(){
+questions=[
+...vocab.map((q,i)=>({q:q[0],a:q.slice(1,4),correct:q[4],type:"VOCABULARY QUEST"})),
+...grammar.map((q,i)=>({q:q[0],a:q.slice(1,4),correct:q[4],type:"GRAMMAR QUEST"}))
+];
+index=0;stars=0;locked=false;
+$("stars").textContent=stars;
+show("quiz");render();
+}
+function render(){
+locked=false;
+const q=questions[index];
+$("category").textContent=q.type;
+$("question").textContent=q.q;
+$("number").textContent=(index+1)+"/"+questions.length;
+$("bar").style.width=(index/questions.length*100)+"%";
+$("rank").textContent=stars>=15?"Pro Player":stars>=8?"Rising Star":"Beginner";
+$("feedback").textContent="";
+$("next").classList.add("hidden");
+$("choices").innerHTML="";
+q.a.forEach((answer,i)=>{
+const b=document.createElement("button");
+b.className="choice";
+b.textContent=String.fromCharCode(65+i)+". "+answer;
+b.onclick=()=>choose(i,b);
+$("choices").appendChild(b);
+});
+}
+function oof(){
+try{
+const C=window.AudioContext||window.webkitAudioContext;
+if(!C)return;
+const ctx=new C(), osc=ctx.createOscillator(), gain=ctx.createGain();
+osc.type="square";
+osc.frequency.setValueAtTime(180,ctx.currentTime);
+osc.frequency.exponentialRampToValueAtTime(75,ctx.currentTime+.22);
+gain.gain.setValueAtTime(.12,ctx.currentTime);
+gain.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.25);
+osc.connect(gain);gain.connect(ctx.destination);
+osc.start();osc.stop(ctx.currentTime+.25);
+}catch(e){}
+}
+function choose(i,b){
+if(locked)return;
+locked=true;
+const q=questions[index];
+[...$("choices").children].forEach(x=>x.disabled=true);
+if(i===q.correct){
+stars++;
+b.classList.add("correct");
+$("feedback").textContent="✅ CORRECT! +1 STAR!";
+$("feedback").style.color="#86efac";
+}else{
+b.classList.add("wrong");
+$("choices").children[q.correct].classList.add("correct");
+$("feedback").textContent="❌ OOF! Nice try! Keep learning!";
+$("feedback").style.color="#fca5a5";
+oof();
+}
+$("stars").textContent=stars;
+$("rank").textContent=stars>=15?"Pro Player":stars>=8?"Rising Star":"Beginner";
+$("next").textContent=index===questions.length-1?"🎤 Speaking Quest":"NEXT ➜";
+$("next").classList.remove("hidden");
+}
+function nextQuestion(){
+if(!locked)return;
+index++;
+if(index<questions.length){render();}
+else{show("speaking");newPrompt();}
+}
+const prompts=[
+"What is your favourite animal? Why?",
+"Describe your best friend.",
+"What do you like to eat?",
+"What can you see in your classroom?",
+"Tell us about your favourite hobby.",
+"What did you do yesterday?",
+"Describe your favourite toy.",
+"What would you like to do at the beach?",
+"Name three things in your school bag.",
+"Make a sentence using the word 'happy'."
+];
+function newPrompt(){
+$("prompt").textContent=prompts[Math.floor(Math.random()*prompts.length)];
+}
+function finishGame(){
+show("end");
+$("bar").style.width="100%";
+$("result").textContent="You earned "+stars+" out of 20 stars!";
+$("message").textContent=stars>=16?"Amazing! You are an English Champion! 🏆":stars>=10?"Great effort! Keep practising! ⭐":"Good try, Player! Practise and play again! 💚";
+}
+</script>
+</body>
+</html>
